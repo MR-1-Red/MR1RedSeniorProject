@@ -6,9 +6,27 @@ from pprint import pprint
 
 alg = "HQC-128"
 hostname = "www.example.com" 
-context = ssl.create_default_context()
-s = socket.create_connection((hostname, 443))
-wrapped_socket = context.wrap_socket(s, server_hostname=hostname)
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+server_port = 443 #Server port number
+client.connect(('localhost', server_port)) #Change first variable to the server_ip
+while True:
+    # input message and send it to the server
+    msg = input("This is client: ")
+    client.send(msg.encode("utf-8")[:1024])
+
+    response = client.recv(1024)
+    response = response.decode("utf-8")
+
+    # if server sent us "closed" in the payload, we; break out of the loop and close our socket
+    if response.lower() == "closed":
+        break
+
+    print(f"Received: {response}")
+
+client.close()
+print("Connection to server closed")
 #print(wrapped_socket.version())
 #wrapped_socket.send("GET / HTTP/ ")
 
