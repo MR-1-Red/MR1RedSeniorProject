@@ -6,6 +6,23 @@
 #include <arpa/inet.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/provider.h>
+
+
+
+static OSSL_LIB_CTX *libctx = NULL;
+
+
+void generate_key(EVP_PKEY *keyloc){
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "hqc256", NULL);
+    libctx=OSSL_LIB_CTX_new();
+    OSSL_PROVIDER_load(libctx, "oqsprovider");
+    EVP_PKEY_generate(keyctx, &keyloc);
+    //printf("key generated");
+    //fflush(stdout);
+    //EVP_PKEY_CTX_free(keyctx);
+}
 
 int create_socket(int port)
 {
@@ -39,7 +56,7 @@ SSL_CTX *create_context()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
-
+    
     method = TLS_server_method();
 
     ctx = SSL_CTX_new(method);
@@ -70,7 +87,8 @@ int main(int argc, char **argv)
 {
     int sock;
     SSL_CTX *ctx;
-
+    EVP_PKEY *key = NULL;
+    generate_key(key);
     /* Ignore broken pipe signals */
     signal(SIGPIPE, SIG_IGN);
 
