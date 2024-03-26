@@ -16,6 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/provider.h>
+#include <openssl/x509.h>
 #include <signal.h>
 
 static const int server_port = 4433;
@@ -89,7 +90,10 @@ SSL_CTX* create_context(bool isServer)
     return ctx;
 }
 
-void generate_key(EVP_PKEY *keyloc){
+
+//old code. All key generation needs to be done in methods that use the key.
+
+/*void generate_key(EVP_PKEY *keyloc){
     EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "hqc256", NULL);
     libctx=OSSL_LIB_CTX_new();
     OSSL_PROVIDER_load(libctx, "oqsprovider");
@@ -97,23 +101,52 @@ void generate_key(EVP_PKEY *keyloc){
     //printf("key generated");
     //fflush(stdout);
     //EVP_PKEY_CTX_free(keyctx);
-}
+}*/
 
 void configure_server_context(SSL_CTX *ctx)
 {
     /* Set the key and cert */
-    if (SSL_CTX_use_certificate_chain_file(ctx, "cert.pem") <= 0) {
+    /*if (SSL_CTX_use_certificate_chain_file(ctx, "cert.pem") <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }*/
+    libctx=OSSL_LIB_CTX_new();
+    OSSL_PROVIDER_load(libctx, "oqsprovider");
+    OSSL_PROVIDER_load(libctx, "default");
+    EVP_PKEY *keyloc = NULL;
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "hqc256", NULL);
+    EVP_PKEY_keygen_init(keyctx);
+    if (EVP_PKEY_generate(keyctx, &keyloc)<= 0){
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
 
-    EVP_PKEY *key = NULL;
-    generate_key(key);
-    
-    if (SSL_CTX_use_PrivateKey(ctx, key) <= 0) {
+    //Need to change this
+    //cert declaration
+    X509 *x509;
+    x509 = X509_new();
+    //time to live and providing key
+    X509_gmtime_adj(X509_get_notBefore(x509), 0);
+    X509_gmtime_adj(X509_get_notAfter(x509), 31536000L);
+    X509_set_pubkey(x509, keyloc);
+
+    //other cert information
+    X509_NAME *name;
+    name = X509_get_subject_name(x509);
+    X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                           (unsigned char *)"localhost", -1, -1, 0);
+    X509_set_issuer_name(x509, name);
+    X509_sign(x509, keyloc, EVP_sha1());
+
+    if (SSL_CTX_use_PrivateKey(ctx, keyloc) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
+    if (SSL_CTX_use_certificate(ctx, x509) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
 }
 
 void configure_client_context(SSL_CTX *ctx)
