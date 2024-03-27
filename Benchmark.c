@@ -9,6 +9,11 @@ static OSSL_LIB_CTX *libctx = NULL;
 
 int main(int argc, char const *argv[])
 {
+    FILE *fp = fopen("Output.txt", "w");// "w" means that we are going to write on this file
+    for (size_t i = 0; i < 20; i++)
+    {
+    
+    
     EVP_PKEY *key = NULL;
     unsigned char *out=NULL;
     unsigned char *secenc=NULL;
@@ -18,7 +23,7 @@ int main(int argc, char const *argv[])
     libctx=OSSL_LIB_CTX_new();
     OSSL_PROVIDER_load(libctx, "oqsprovider");
     OSSL_PROVIDER_load(libctx, "default");
-    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "hqc256", NULL);
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "bikel5", NULL);
     clock_t genbegin = clock();
     EVP_PKEY_keygen_init(keyctx);
     EVP_PKEY_generate(keyctx, &key);
@@ -60,18 +65,19 @@ int main(int argc, char const *argv[])
         printf(" %ld\n", seclen);
         printf(" %ld\n", outlen);
     }
-FILE *fp;
-fp = fopen("Output.txt", "w");// "w" means that we are going to write on this file
-fprintf(fp, "Generation: clock cycles: %lf  Time taken: %lfs\n", genticks, gentime);
-fprintf(fp, "Encapsulation: clock cycles: %lf  Time taken: %lfs\n", encapticks, encaptime);
-fprintf(fp, "Decapsulation: clock cycles: %lf  Time taken: %lfs\n", decapticks, decaptime);
-fclose(fp); //Don't forget to close the file when finished
 
+
+    fprintf(fp, "Generation: clock cycles: %lf  Time taken: %lfs\n", genticks, gentime);
+    fprintf(fp, "Encapsulation: clock cycles: %lf  Time taken: %lfs\n", encapticks, encaptime);
+    fprintf(fp, "Decapsulation: clock cycles: %lf  Time taken: %lfs\n", decapticks, decaptime);
+    }
+    fclose(fp); //Don't forget to close the file when finished
+    
     /*EVP_PKEY_free(key);*/
     //EVP_PKEY_CTX_free(keyctx);
     //OPENSSL_free(out);
     //OPENSSL_free(secenc);
-    //OPENSSL_free(secdec);
+    //PENSSL_free(secdec);
     OSSL_LIB_CTX_free(libctx);
 
     return 0;
