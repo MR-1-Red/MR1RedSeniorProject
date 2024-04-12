@@ -114,41 +114,56 @@ void configure_server_context(SSL_CTX *ctx)
     OSSL_PROVIDER_load(libctx, "oqsprovider");
     OSSL_PROVIDER_load(libctx, "default");
     EVP_PKEY *keyloc = NULL;
-    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "hqc256", NULL);
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "kyber512", NULL);
     EVP_PKEY_keygen_init(keyctx);
     if (EVP_PKEY_generate(keyctx, &keyloc)<= 0){
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-
+    /*
     //Need to change this
     //cert declaration
     X509 *x509;
     x509 = X509_new();
     //time to live and providing key
-    X509_gmtime_adj(X509_get_notBefore(x509), 0);
-    X509_gmtime_adj(X509_get_notAfter(x509), 31536000L);
+    ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
+    X509_gmtime_adj(X509_getm_notBefore(x509), 0);
+    X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L);
     X509_set_pubkey(x509, keyloc);
 
     //other cert information
     X509_NAME *name;
     name = X509_get_subject_name(x509);
+    X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC,
+                           (unsigned char *)"CH", -1, -1, 0);
     X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
                            (unsigned char *)"localhost", -1, -1, 0);
     X509_set_issuer_name(x509, name);
-    X509_sign(x509, keyloc, EVP_sha1());
+    if(X509_sign(x509, keyloc, EVP_sha1())<=0){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    FILE * f;
+    f = fopen("cert2.pem", "wb");
+    PEM_write_X509(
+    f,   
+    x509  our certificate 
+    );*/
 
     if (SSL_CTX_use_PrivateKey(ctx, keyloc) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-    if (SSL_CTX_use_certificate(ctx, x509) <= 0) {
+    /*if (SSL_CTX_use_certificate_file(ctx, "cert2.pem", SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
-    }
+    }*/
 
 }
 
+
+//We shouldn't use this in the KEM experiments as we are unable to sign certificate while using pqc algorithms
 void configure_client_context(SSL_CTX *ctx)
 {
     /*
