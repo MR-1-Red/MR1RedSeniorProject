@@ -79,14 +79,16 @@ SSL_CTX* create_context(bool isServer)
         method = TLS_server_method();
     else
         method = TLS_client_method();
-
-    ctx = SSL_CTX_new(method);
+    libctx=OSSL_LIB_CTX_new();
+    OSSL_PROVIDER_load(libctx, "oqsprovider");
+    OSSL_PROVIDER_load(libctx, "default");
+    ctx = SSL_CTX_new_ex(libctx, NULL, method);
     if (ctx == NULL) {
         perror("Unable to create SSL context");
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-
+    libctx=NULL;
     return ctx;
 }
 
@@ -114,13 +116,17 @@ void configure_server_context(SSL_CTX *ctx)
     OSSL_PROVIDER_load(libctx, "oqsprovider");
     OSSL_PROVIDER_load(libctx, "default");
     EVP_PKEY *keyloc = NULL;
-    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "kyber512", NULL);
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "falcon512", NULL);
     EVP_PKEY_keygen_init(keyctx);
     if (EVP_PKEY_generate(keyctx, &keyloc)<= 0){
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-    /*
+    EVP_PKEY_CTX_free(keyctx);
+    keyctx=NULL;
+    
+    keyctx=EVP_PKEY_CTX_new_from_pkey(libctx, keyloc, NULL);
+    
     //Need to change this
     //cert declaration
     X509 *x509;
@@ -144,22 +150,30 @@ void configure_server_context(SSL_CTX *ctx)
         exit(EXIT_FAILURE);
     }
 
-    FILE * f;
-    f = fopen("cert2.pem", "wb");
+    /*FILE * f;
+    f = fopen("cert2.crt", "wb");
     PEM_write_X509(
     f,   
-    x509  our certificate 
+    x509  
     );*/
-
+    /*if (SSL_CTX_use_certificate(ctx, x509)<=0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    //SSL_CTX_use_certificate();
     if (SSL_CTX_use_PrivateKey(ctx, keyloc) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-    /*if (SSL_CTX_use_certificate_file(ctx, "cert2.pem", SSL_FILETYPE_PEM) <= 0) {
+    */
+       if (SSL_CTX_use_certificate_chain_file(ctx, "rsa_srv.crt") <=0){
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
-    }*/
-
+    }
+    if (SSL_CTX_use_PrivateKey_file(ctx, "rsa_srv.key", SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -176,7 +190,7 @@ void configure_client_context(SSL_CTX *ctx)
      *     SSL_CTX_set_default_verify_paths(ctx);
      * In this demo though we are using a self-signed certificate, so the client must trust it directly.
      */
-    if (!SSL_CTX_load_verify_locations(ctx, "cert.pem", NULL)) {
+    if (!SSL_CTX_load_verify_locations(ctx, "rsa_srv.crt", NULL)) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
@@ -324,7 +338,8 @@ int main(int argc, char **argv)
         printf("We are the client\n\n");
 
         /* Configure client context so we verify the server correctly */
-        configure_client_context(ssl_ctx);
+        //uneeded with KEMTLS
+        //configure_client_context(ssl_ctx);
 
         /* Create "bare" socket */
         client_skt = create_socket(false);

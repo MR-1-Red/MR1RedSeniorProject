@@ -3,6 +3,7 @@
 #include <openssl/evp.h>
 #include <openssl/provider.h>
 #include <openssl/rand.h>
+#include <openssl/params.h>
 #include <string.h>
 
 static OSSL_LIB_CTX *libctx = NULL;
@@ -19,12 +20,15 @@ int main(int argc, char const *argv[])
     unsigned char *secenc=NULL;
     unsigned char *secdec=NULL;
     size_t outlen, seclen;
+    OSSL_PARAM params[2];
 
     libctx=OSSL_LIB_CTX_new();
     OSSL_PROVIDER_load(libctx, "oqsprovider");
     OSSL_PROVIDER_load(libctx, "default");
-    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "kyber512", NULL);
+    EVP_PKEY_CTX *keyctx = EVP_PKEY_CTX_new_from_name(libctx, "EC", NULL);
     EVP_PKEY_keygen_init(keyctx);
+    params[0]= OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME, "P-256", 0);
+    params[1]=OSSL_PARAM_construct_end();
     clock_t genbegin = clock();
     
     EVP_PKEY_generate(keyctx, &key);
