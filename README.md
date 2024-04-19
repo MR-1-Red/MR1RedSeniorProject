@@ -20,4 +20,3 @@ openssl s_client -groups frodo640aes -CAfile rsa_CA.crt
 These should be run in two seperate terminals. Have wireshark monitoring loopback to get packets. raplace "frodo640aes" with whatever algorithm you want to test or run the TLStest.sh script to test all algorithms
 
 
-code in C. python files dont work anymore
